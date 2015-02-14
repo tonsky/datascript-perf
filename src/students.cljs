@@ -83,10 +83,20 @@
 
 (defn q2 [db] (q-find-starttime-ll db [6028]))
 
+(defn q2-opt [db]
+  (for [lgid [6028]
+        :let [datoms (d/datoms db :avet :lesson/lessongroupid lgid)]]
+    [lgid (reduce max (sequence
+                        (comp (map :e)
+                              (map #(d/entity db %))
+                              (map :lesson/starttime))
+                         datoms))]))
+
 (defn run-tests [db]
   (println "Measured q1:" (measure 50 (q1 db)) "ms")
   (println "Measured q1-opt:" (measure 50 (q1-opt db)) "ms")
-  (println "Measured q2:" (measure 50 (q2 db)) "ms"))
+  (println "Measured q2:" (measure 50 (q2 db)) "ms")
+  (println "Measured q2-opt:" (measure 50 (q2-opt db)) "ms"))
 
 (defn ^:export start []
   (fetch-data))
