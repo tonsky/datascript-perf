@@ -52,7 +52,7 @@
        db))
 
 (defn run-tests [db]
-  (println "Measured query:" (measure 50 (query q db)) "ms" q))
+  (measure "query" (query q db)))
 
 (defn ^:export start []
   (fetch-data))

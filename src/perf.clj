@@ -5,16 +5,18 @@
 
 (defmacro spy [message & body]
  `(do
-    (js/console.time ~message)
-    (let [res# (do ~@body)]
-      (js/console.timeEnd ~message)
+    (let [t0#  (util/now)
+          res# (do ~@body)
+          ms#  (- (util/now) t0#)]
+      (js/console.log (util/format-time-str ms# ~message))
       res#)))
 
-(defmacro measure [times & body]
+(defmacro measure [message & body]
  `(do
-    (dotimes [_# 50]
-      ~@body) ;; warm-up
-    (let [t0# (util/now)]
-      (dotimes [_# ~times]
-        ~@body)
-      (/ (- (util/now) t0#) ~times))))
+    (dotimes [_# util/*warmups*] ~@body) ;; warm-up
+    (let [t0# (util/now)
+          _#  (dotimes [_# util/*runs*] ~@body)
+          t1# (util/now)
+          ms# (/ (- t1# t0#) util/*runs*)]
+      (js/console.log (util/format-time-str ms# ~message))
+      ms#)))

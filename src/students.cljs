@@ -65,13 +65,30 @@
                            [?iid :invoice/enrollment_id ?eid]
                            [?iid :invoice/paid ?paid]
                            [?eid :enrollment/student_id ?sid]] db tid week)]
-    (for [[lid paid sids] data
-          :let [lesson   (d/pull db [:db/id :lesson/lessongroupid :lesson/status :lesson/starttime :lesson/endtime] lid)
-                students (mapv #(d/pull db [:db/id :student/firstname :student/lastname] %) sids)]]
-      (assoc lesson
-        :paid paid
-        :students students))))
+    (doall
+      (for [[lid paid sids] data
+            :let [lesson   (d/pull db [:db/id :lesson/lessongroupid :lesson/status :lesson/starttime :lesson/endtime] lid)
+                  students (mapv #(d/pull db [:db/id :student/firstname :student/lastname] %) sids)]]
+        (assoc lesson
+          :paid paid
+          :students students)))))
 
+(defn q1-const [db]
+  (let [data (d/q '[:find  ?lid (min ?paid) (distinct ?sid)
+                    :where [?lid :lesson/teacherid 2001]
+                           [?lid :lesson/week 6]
+                           [?lid :lesson/lessongroupid ?lgid]
+                           [?eid :enrollment/lessongroup_id ?lgid]
+                           [?iid :invoice/enrollment_id ?eid]
+                           [?iid :invoice/paid ?paid]
+                           [?eid :enrollment/student_id ?sid]] db)]
+    (doall
+      (for [[lid paid sids] data
+            :let [lesson   (d/pull db [:db/id :lesson/lessongroupid :lesson/status :lesson/starttime :lesson/endtime] lid)
+                  students (mapv #(d/pull db [:db/id :student/firstname :student/lastname] %) sids)]]
+        (assoc lesson
+          :paid paid
+          :students students)))))
 
 (defn q-find-starttime-ll [db lgids]
   (d/q '{:find [?lgid (max ?start)]
@@ -84,19 +101,21 @@
 (defn q2 [db] (q-find-starttime-ll db [6028]))
 
 (defn q2-opt [db]
-  (for [lgid [6028]
-        :let [datoms (d/datoms db :avet :lesson/lessongroupid lgid)]]
-    [lgid (reduce max (sequence
-                        (comp (map :e)
-                              (map #(d/entity db %))
-                              (map :lesson/starttime))
-                         datoms))]))
+  (doall
+    (for [lgid [6028]
+          :let [datoms (d/datoms db :avet :lesson/lessongroupid lgid)]]
+      [lgid (reduce max (sequence
+                          (comp (map :e)
+                                (map #(d/entity db %))
+                                (map :lesson/starttime))
+                           datoms))])))
 
 (defn run-tests [db]
-  (println "Measured q1:" (measure 50 (q1 db)) "ms")
-  (println "Measured q1-opt:" (measure 50 (q1-opt db)) "ms")
-  (println "Measured q2:" (measure 50 (q2 db)) "ms")
-  (println "Measured q2-opt:" (measure 50 (q2-opt db)) "ms"))
+  (measure "q1"       (q1 db))
+  (measure "q1-opt"   (q1-opt db))
+  (measure "q1-const" (q1-const db))
+  (measure "q2"       (q2 db))
+  (measure "q2-opt"   (q2-opt db)))
 
 (defn ^:export start []
   (fetch-data))
